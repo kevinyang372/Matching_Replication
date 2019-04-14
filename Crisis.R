@@ -1,4 +1,4 @@
-    #====================================================
+#====================================================
 # Crisis Data -- Replication of Main Results
 # Date: 7/8/04
 # Data file: "crisis4d.sav"
@@ -51,6 +51,7 @@ library(Matching)
 library(lattice)
 library(mvtnorm)
 
+court <- read.csv("/Users/kevin/desktop/Github/Matching_Replication/Court.csv",header=TRUE)
 #reading in data
 dta0 <- read.table("/Users/kevin/desktop/Github/Matching_Replication/Crisis.txt",header=TRUE)
 dta <- subset.data.frame(dta0, select= c(dir, war2, warcri, bef75, warcase, scm, scm2, lctdir, analu, value, term, nyt, rally2, crisis,scmedian))
@@ -80,27 +81,64 @@ st[1,4:6] <- as.numeric(sim.logit(logitm1))
 # Main Table, Model 2 (Exact matching except for Term)
 
 #Non-warcases
-b0 <- matchit(war2 ~ lctdir + scm + nyt + bef75,
-               exact=TRUE, data = dta[dta$warcase==0,])
-st[2,1:3] <- calc.ate(b0)
+
+psm.nonwar <- glm(war2 ~ lctdir + scm + nyt + bef75, data = dta[dta$warcase==0,], family = "binomial" )
+X.nonwar <- psm.nonwar$fitted
+Tr <- dta[dta$warcase==0,]$war2
+Y <- dta[dta$warcase==0,]$dir
+
+nonwar.match <- Match(Tr = Tr, X = X.nonwar, exact = TRUE)
+mb.nonwar  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75, data=dta[dta$warcase==0,], match.out=nonwar.match, nboots=100)
+
+nonwar.match <- Match(Y=Y, Tr = Tr, X = X.nonwar, exact = TRUE)
+summary(nonwar.match)
+
+st[2,1:3] <- c(nonwar.match$est[1], nonwar.match$se, nonwar.match$orig.treated.nobs - length(nonwar.match$index.dropped))
 
 #Warcases
-b1 <- matchit(war2 ~ lctdir + scm + nyt + bef75,
-               exact=TRUE, data = dta[dta$warcase!=0,])
-st[2,4:6] <- calc.ate(b1)
+psm.war <- glm(war2 ~ lctdir + scm + nyt + bef75, data = dta[dta$warcase!=0,], family = "binomial" )
+X.war <- psm.war$fitted
+Tr <- dta[dta$warcase!=0,]$war2
+Y <- dta[dta$warcase!=0,]$dir
+
+war.match <- Match(Tr = Tr, X = X.war, exact = TRUE)
+mb.war  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75, data=dta[dta$warcase!=0,], match.out=war.match, nboots=100)
+
+war.match <- Match(Y=Y, Tr = Tr, X = X.war, exact = TRUE)
+summary(war.match)
+
+st[2,4:6] <- c(war.match$est[1], war.match$se, war.match$orig.treated.nobs - length(war.match$index.dropped))
 
 #=============================================================================
 # Main Table, Model 3 (Exact matching on everything)
 
 #Non-warcases
-d0 <- matchit(war2 ~ lctdir + scm + nyt + bef75 + term,
-               exact=TRUE, data = dta[dta$warcase==0,])
-st[3,1:3] <- calc.ate(d0)
+psm.nonwar <- glm(war2 ~ lctdir + scm + nyt + bef75 + term, data = dta[dta$warcase==0,], family = "binomial" )
+X.nonwar <- psm.nonwar$fitted
+Tr <- dta[dta$warcase==0,]$war2
+Y <- dta[dta$warcase==0,]$dir
+
+nonwar.match <- Match(Tr = Tr, X = X.nonwar, exact = TRUE)
+mb.nonwar  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75 + term, data=dta[dta$warcase==0,], match.out=nonwar.match, nboots=100)
+
+nonwar.match <- Match(Y=Y, Tr = Tr, X = X.nonwar, exact = TRUE)
+summary(nonwar.match)
+
+st[3,1:3] <- c(nonwar.match$est[1], nonwar.match$se, nonwar.match$orig.treated.nobs - length(nonwar.match$index.dropped))
 
 #Warcases
-d1 <- matchit(war2 ~ lctdir + scm + nyt + bef75 + term,
-               exact=TRUE, data = dta[dta$warcase!=0,])
-st[3,4:6] <- c(NA,NA,NA)
+psm.war <- glm(war2 ~ lctdir + scm + nyt + bef75 + term, data = dta[dta$warcase!=0,], family = "binomial" )
+X.war <- psm.war$fitted
+Tr <- dta[dta$warcase!=0,]$war2
+Y <- dta[dta$warcase!=0,]$dir
+
+war.match <- Match(Tr = Tr, X = X.war, exact = TRUE)
+mb.war  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75 + term, data=dta[dta$warcase!=0,], match.out=war.match, nboots=100)
+
+war.match <- Match(Y=Y, Tr = Tr, X = X.war, exact = TRUE)
+summary(war.match)
+
+st[3,4:6] <- c(NA, NA, NA)
 
 #=============================================================================
 # Main Table, Models 4 & 5 (Pscore matching (without and with logistic
@@ -109,46 +147,41 @@ st[3,4:6] <- c(NA,NA,NA)
 # Calculating variance and point estimate by averaging
 # over variability of matching estimates (due to ties in propensity
 # score, we use multiple imputation principles here)
-sims <- 20
-ate0.sim <- matrix(0,3,sims)
-ate1.sim <- matrix(0,3,sims)
-ate0.sim.reg <- matrix(0,2,sims)
-ate1.sim.reg <- matrix(0,2,sims)
-for(i in 1:sims){
-  #Non-warcases
-  g0 <- matchit(war2 ~ lctdir + scm + term + nyt + bef75,
-                data = dta[dta$warcase==0,], replace=FALSE, discard=1,
-                reestimate=TRUE)
-  #Warcases
-  g1 <- matchit(war2 ~ lctdir + scm + term + nyt + bef75,
-                data = dta[dta$warcase!=0,], replace=FALSE, discard=1,
-                reestimate=TRUE)
-  #Effect of warcases
-  g1 <- matchit(I(warcase!=0) ~ lctdir + scm + term + nyt + bef75,
-                data = dta[dta$war2==0,], replace=FALSE, discard=1,
-                reestimate=TRUE, ratio=3)
-  foo0 <- neyman(dir,g0)
-  foo1 <- neyman(dir,g1)
-  ate0.sim[,i] <- c(foo0$ate,foo0$se,sum(foo0$Ntrt,foo0$Ncont))
-  ate1.sim[,i] <- c(foo1$ate,foo1$se,sum(foo1$Ntrt,foo1$Ncont))
-  #Logistic adjustment
-  mg0 <- mlogit(g0)
-  mg1 <- mlogit(g1)
-  ate0.sim.reg[,i] <- c(mean(mg0),sd(mg0))
-  ate1.sim.reg[,i] <- c(mean(mg1),sd(mg1))
-}
 
-#Using subclass formulas to combine estimates
-ate1.bar <- mean(ate1.sim[1,])
-se1.bar <- sqrt(mean((ate1.sim[2,]^2))+(sum((ate1.sim[1,]-ate1.bar)^2)/(sims-1))*(1+1/sims))
-ate0.bar <- mean(ate0.sim[1,])
-se0.bar <- sqrt(mean((ate0.sim[2,]^2))+(sum((ate0.sim[1,]-ate0.bar)^2)/(sims-1))*(1+1/sims))
-ate1.bar.reg <- mean(ate1.sim.reg[1,])
-ate1.se.bar <- sqrt(mean((ate1.sim.reg[2,]^2))+(sum((ate1.sim.reg[1,]-ate1.bar.reg)^2)/(sims-1))*(1+1/sims))
-ate0.bar.reg <- mean(ate0.sim.reg[1,])
-ate0.se.bar <- sqrt(mean((ate0.sim.reg[2,]^2))+(sum((ate0.sim.reg[1,]-ate0.bar.reg)^2)/(sims-1))*(1+1/sims))
+# Failed to match a good result
+psm.nonwar <- glm(war2 ~ lctdir + scm + term + nyt + bef75 + 
+                  I(term*term) + I(lctdir*lctdir) + I(scm*scm) + 
+                  I(nyt*nyt) + I(bef75*bef75) + I(lctdir*scm) +
+                  I(lctdir*term) + I(lctdir*nyt) + I(lctdir*bef75)
+                  + I(scm*term) + I(scm*nyt) + I(scm*bef75)
+                  + I(term*nyt) + I(term*bef75) + I(nyt*bef75), data = dta[dta$warcase==0,], family = "binomial")
 
-#storing
+X.nonwar <- psm.nonwar$fitted
+Tr <- dta[dta$warcase==0,]$war2
+Y <- dta[dta$warcase==0,]$dir
+
+nonwar.match <- Match(Tr = Tr, X = X.nonwar, replace = FALSE)
+mb.nonwar  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75 + term, data=dta[dta$warcase==0,], match.out=nonwar.match, nboots=100)
+
+nonwar.match <- Match(Y=Y, Tr = Tr, X = X.nonwar, exact = TRUE)
+summary(nonwar.match)
+
+# Using GenMatch Instead
+dta.nonwar <- dta[dta$warcase==0,]
+X.nonwar.gen <- cbind(dta.nonwar$lctdir, dta.nonwar$scm, dta.nonwar$term, dta.nonwar$nyt, dta.nonwar$bef75)
+Tr <- dta[dta$warcase==0,]$war2
+Y <- dta[dta$warcase==0,]$dir
+
+genout <- GenMatch(Tr=Tr, X=X.nonwar.gen, pop.size=200, max.generations=100, wait.generations=10, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
+
+mout  <- Match(Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
+summary(mout)
+
+mb  <- MatchBalance(war2 ~ lctdir + scm + term + nyt + bef75, data=dta.nonwar, match.out=mout, nboots=100)
+
+mout  <- Match(Y=Y, Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix)
+summary(mout)
+
 st[4,1:3] <- c(ate0.bar,se0.bar,ate0.sim[3,1])
 st[4,4:6] <- c(ate1.bar,se1.bar,ate1.sim[3,1])
 st[5,1:3] <- c(ate0.bar.reg,ate0.se.bar,ate0.sim[3,1])
