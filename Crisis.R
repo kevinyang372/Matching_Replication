@@ -50,6 +50,7 @@ remove(list=ls())
 library(Matching)
 library(lattice)
 library(mvtnorm)
+library(rbounds)
 
 court <- read.csv("/Users/kevin/desktop/Github/Matching_Replication/Court.csv",header=TRUE)
 #reading in data
@@ -183,15 +184,21 @@ summary(mout)
 
 mb  <- MatchBalance(war2 ~ lctdir + scm + term + nyt + bef75, data=dta.nonwar, match.out=mout, nboots=100)
 
-mout  <- Match(Y=Y, Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix)
-summary(mout)
+mout.nonwar.nb  <- Match(Y=Y, Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix)
+summary(mout.nonwar.nb)
 
-st[4,1:3] <- c(mout$est[1], mout$se, mout$orig.treated.nobs - length(mout$index.dropped))
+st[4,1:3] <- c(mout.nonwar.nb$est[1], mout.nonwar.nb$se, mout.nonwar.nb$orig.treated.nobs - length(mout.nonwar.nb$index.dropped))
 
-mout  <- Match(Y=Y, Tr=Tr, X=X.nonwar.gen, BiasAdjust = TRUE, Weight.matrix = genout$Weight.matrix)
-summary(mout)
+psens(mout.nonwar.nb, Gamma=1.5, GammaInc=.1)
+hlsens(mout.nonwar.nb, Gamma=1.5, GammaInc=.1, .1)
 
-st[5,1:3] <- c(mout$est[1], mout$se, mout$orig.treated.nobs - length(mout$index.dropped))
+mout.nonwar.b  <- Match(Y=Y, Tr=Tr, X=X.nonwar.gen, BiasAdjust = TRUE, Weight.matrix = genout$Weight.matrix)
+summary(mout.nonwar.b)
+
+st[5,1:3] <- c(mout.nonwar.b$est[1], mout.nonwar.b$se, mout.nonwar.b$orig.treated.nobs - length(mout.nonwar.b$index.dropped))
+
+psens(mout.nonwar.b, Gamma=1.5, GammaInc=.1)
+
 # War Case
 
 dta.war <- dta[dta$warcase!=0,]
@@ -208,20 +215,26 @@ Y <- dta.war$dir
 
 genout.war <- GenMatch(Tr=Tr, X=X.war.gen, pop.size=200, max.generations=100, wait.generations=50, caliper=c(1, 0.5, 1, 1, 1))
 
-mout.war  <- Match(Tr=Tr, X=X.war.gen, Weight.matrix = genout.war$Weight.matrix, caliper=c(1, 0.5, 1, 1, 1))
-summary(mout.war)
+mout  <- Match(Tr=Tr, X=X.war.gen, Weight.matrix = genout.war$Weight.matrix, caliper=c(1, 0.5, 1, 1, 1))
+summary(mout)
 
 mb  <- MatchBalance(war2 ~ lctdir + scm + term + nyt + bef75, data=dta.war, match.out=mout.war, nboots=100)
 
-mout  <- Match(Y=Y, Tr=Tr, X=X.war.gen, Weight.matrix = genout.war$Weight.matrix)
-summary(mout)
+mout.war.nb  <- Match(Y=Y, Tr=Tr, X=X.war.gen, Weight.matrix = genout.war$Weight.matrix)
+summary(mout.war.nb)
 
-st[4,4:6] <- c(mout$est[1], mout$se, mout$orig.treated.nobs - length(mout$index.dropped))
+st[4,4:6] <- c(mout.war.nb$est[1], mout.war.nb$se, mout.war.nb$orig.treated.nobs - length(mout.war.nb$index.dropped))
 
-mout  <- Match(Y=Y, Tr=Tr, X=X.war.gen, BiasAdjust = TRUE, Weight.matrix = genout.war$Weight.matrix)
-summary(mout)
+psens(mout.war.nb, Gamma=1.5, GammaInc=.1)
 
-st[5,4:6] <- c(mout$est[1], mout$se, mout$orig.treated.nobs - length(mout$index.dropped))
+# Bias Adjust
+
+mout.war.b  <- Match(Y=Y, Tr=Tr, X=X.war.gen, BiasAdjust = TRUE, Weight.matrix = genout.war$Weight.matrix)
+summary(mout.war.b)
+
+st[5,4:6] <- c(mout.war.b$est[1], mout.war.b$se, mout.war.b$orig.treated.nobs - length(mout.war.b$index.dropped))
+
+psens(mout.war.b, Gamma=1.5, GammaInc=.1)
 
 #formatting table
 st <- as.data.frame(st)
