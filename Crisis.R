@@ -53,7 +53,7 @@ library(mvtnorm)
 
 court <- read.csv("/Users/kevin/desktop/Github/Matching_Replication/Court.csv",header=TRUE)
 #reading in data
-dta0 <- read.table("/Users/kevin/desktop/Github/Matching_Replication/Crisis.txt",header=TRUE)
+dta0 <- read.table("/Users/johannes/Desktop/Minerva/CS112/Matching_Replication/Crisis.txt",header=TRUE)
 dta <- subset.data.frame(dta0, select= c(dir, war2, warcri, bef75, warcase, scm, scm2, lctdir, analu, value, term, nyt, rally2, crisis,scmedian))
 dta <- na.omit(dta)
 
@@ -165,6 +165,7 @@ mb.nonwar  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75 + term, data=dta[dt
 
 nonwar.match <- Match(Y=Y, Tr = Tr, X = X.nonwar, exact = TRUE)
 summary(nonwar.match)
+mb.nonwar  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75 + term, data=dta[dta$warcase==0,], match.out=nonwar.match, nboots=100)
 
 # Using GenMatch Instead
 dta.nonwar <- dta[dta$warcase==0,]
@@ -172,9 +173,9 @@ X.nonwar.gen <- cbind(dta.nonwar$lctdir, dta.nonwar$scm, dta.nonwar$term, dta.no
 Tr <- dta[dta$warcase==0,]$war2
 Y <- dta[dta$warcase==0,]$dir
 
-genout <- GenMatch(Tr=Tr, X=X.nonwar.gen, pop.size=200, max.generations=100, wait.generations=10, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
+genout <- GenMatch(Tr=Tr, X=X.nonwar.gen, pop.size=200, max.generations=100, wait.generations=10, caliper = c(FALSE, .09, .09, FALSE, FALSE))
 
-mout  <- Match(Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
+mout  <- Match(Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix, caliper = c(FALSE, .09, .09, FALSE, FALSE))
 summary(mout)
 
 mb  <- MatchBalance(war2 ~ lctdir + scm + term + nyt + bef75, data=dta.nonwar, match.out=mout, nboots=100)
