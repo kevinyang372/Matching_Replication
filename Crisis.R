@@ -169,10 +169,10 @@ summary(nonwar.match)
 # Using GenMatch Instead
 dta.nonwar <- dta[dta$warcase==0,]
 X.nonwar.gen <- cbind(dta.nonwar$lctdir, dta.nonwar$scm, dta.nonwar$term, dta.nonwar$nyt, dta.nonwar$bef75)
-Tr <- dta[dta$warcase==0,]$war2
-Y <- dta[dta$warcase==0,]$dir
+Tr <- dta.nonwar$war2
+Y <- dta.nonwar$dir
 
-genout <- GenMatch(Tr=Tr, X=X.nonwar.gen, pop.size=200, max.generations=100, wait.generations=10, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
+genout <- GenMatch(Tr=Tr, X=X.nonwar.gen, pop.size=200, max.generations=100, wait.generations=25, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
 
 mout  <- Match(Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
 summary(mout)
@@ -182,17 +182,49 @@ mb  <- MatchBalance(war2 ~ lctdir + scm + term + nyt + bef75, data=dta.nonwar, m
 mout  <- Match(Y=Y, Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix)
 summary(mout)
 
-st[4,1:3] <- c(ate0.bar,se0.bar,ate0.sim[3,1])
-st[4,4:6] <- c(ate1.bar,se1.bar,ate1.sim[3,1])
-st[5,1:3] <- c(ate0.bar.reg,ate0.se.bar,ate0.sim[3,1])
-st[5,4:6] <- c(ate1.bar.reg,ate1.se.bar,ate1.sim[3,1])
+st[4,1:3] <- c(mout$est[1], mout$se, mout$orig.treated.nobs - length(mout$index.dropped))
+
+mout  <- Match(Y=Y, Tr=Tr, X=X.nonwar.gen, BiasAdjust = TRUE, Weight.matrix = genout$Weight.matrix)
+summary(mout)
+
+st[5,1:3] <- c(mout$est[1], mout$se, mout$orig.treated.nobs - length(mout$index.dropped))
+# War Case
+
+dta.war <- dta[dta$warcase!=0,]
+
+dta.war$term[which(dta.war$term >= 1980)] <- 5
+dta.war$term[which(dta.war$term >= 1970)] <- 4
+dta.war$term[which(dta.war$term >= 1960)] <- 3
+dta.war$term[which(dta.war$term >= 1950)] <- 2
+dta.war$term[which(dta.war$term >= 1940)] <- 1
+
+X.war.gen <- cbind(dta.war$lctdir, dta.war$scm, dta.war$term, dta.war$nyt, dta.war$bef75)
+Tr <- dta.war$war2
+Y <- dta.war$dir
+
+genout.war <- GenMatch(Tr=Tr, X=X.war.gen, pop.size=200, max.generations=100, wait.generations=50, caliper=c(1, 0.5, 1, 1, 1))
+
+mout.war  <- Match(Tr=Tr, X=X.war.gen, Weight.matrix = genout.war$Weight.matrix, caliper=c(1, 0.5, 1, 1, 1))
+summary(mout.war)
+
+mb  <- MatchBalance(war2 ~ lctdir + scm + term + nyt + bef75, data=dta.war, match.out=mout.war, nboots=100)
+
+mout  <- Match(Y=Y, Tr=Tr, X=X.war.gen, Weight.matrix = genout.war$Weight.matrix)
+summary(mout)
+
+st[4,4:6] <- c(mout$est[1], mout$se, mout$orig.treated.nobs - length(mout$index.dropped))
+
+mout  <- Match(Y=Y, Tr=Tr, X=X.war.gen, BiasAdjust = TRUE, Weight.matrix = genout.war$Weight.matrix)
+summary(mout)
+
+st[5,4:6] <- c(mout$est[1], mout$se, mout$orig.treated.nobs - length(mout$index.dropped))
 
 #formatting table
 st <- as.data.frame(st)
 names(st) <- rep(c("ATE","SE","N"),2)
 row.names(st) <- c("Logistic Model", "Exact Matching Except for Term",
-                   "Exact Matching", "Propensity Score Matching",
-                   "Propensity Score Matching (Logistic Adjustment)")
+                   "Exact Matching", "Genetic Matching",
+                   "Genetic Matching (Bias Adjusted)")
 
 #=============================================================================
 # Main graphs
