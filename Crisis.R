@@ -161,7 +161,8 @@ X.nonwar <- psm.nonwar$fitted
 Tr <- dta[dta$warcase==0,]$war2
 Y <- dta[dta$warcase==0,]$dir
 
-nonwar.match <- Match(Tr = Tr, X = X.nonwar, replace = FALSE)
+nonwar.match <- Match(Y= Y,Tr = Tr, X = X.nonwar, replace = FALSE)
+summary(nonwar.match)
 mb.nonwar  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75 + term, data=dta[dta$warcase==0,], match.out=nonwar.match, nboots=100)
 
 nonwar.match <- Match(Y=Y, Tr = Tr, X = X.nonwar, exact = TRUE)
