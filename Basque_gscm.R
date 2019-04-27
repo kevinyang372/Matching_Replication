@@ -1,6 +1,6 @@
 install.packages("gsynth")
 library(gsynth)
-?gsynth
+
 
 basquegscm <- basque
 basquegscm$treat <- rep(0, 774)
@@ -17,11 +17,14 @@ out <- gsynth(gdpcap ~ treat
               index = c("regionno","year"), force = "two-way",
               CV = TRUE, r = c(0, 5), se = FALSE) 
 print(out) 
-plot(out, type = "counterfactual")
+plot(out, type = "counterfactual", main = "GSCM for Basque", ylab = "real per-capita GDP (1986 USD, thousand)", xlab= "Year")
+title( "GSCM for Basque")
 
-?gsynth
+?plot.gsynth
 
 # dataprep: prepare data for synth
+install.packages("Synth")
+library(Synth) 
 dataprep.out <-
   dataprep(
     foo = basque
@@ -95,7 +98,9 @@ path.plot(synth.res = synth.out,
           Ylab = c("real per-capita GDP (1986 USD, thousand)"),
           Xlab = c("year"), 
           Ylim = c(0,13), 
+          Main = "SCM for Basque",
           Legend = c("Basque country","synthetic Basque country"),
+          tr.intake = 1969
 ) 
 gaps.plot(synth.res = synth.out,
           dataprep.res = dataprep.out, 

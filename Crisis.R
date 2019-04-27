@@ -88,7 +88,7 @@ X.nonwar <- psm.nonwar$fitted
 Tr <- dta[dta$warcase==0,]$war2
 Y <- dta[dta$warcase==0,]$dir
 
-nonwar.match <- Match(Tr = Tr, X = X.nonwar, exact = TRUE)
+nonwar.match <- Match(Y = Y, Tr = Tr, X = X.nonwar, exact = FALSE)
 mb.nonwar  <- MatchBalance(war2 ~ lctdir + scm + nyt + bef75, data=dta[dta$warcase==0,], match.out=nonwar.match, nboots=100)
 
 nonwar.match <- Match(Y=Y, Tr = Tr, X = X.nonwar, exact = TRUE)
@@ -176,11 +176,12 @@ Tr <- dta.nonwar$war2
 Y <- dta.nonwar$dir
 
 
-genout <- GenMatch(Tr=Tr, X=X.nonwar.gen, pop.size=200, max.generations=100, wait.generations=25, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
+
+genout <- GenMatch(Tr=Tr, X=X.nonwar.gen, pop.size=20, max.generations=100, wait.generations=25, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
 
 # genout <- GenMatch(Tr=Tr, X=X.nonwar.gen, pop.size=200, max.generations=100, wait.generations=10, caliper = c(FALSE, .09, .09, FALSE, FALSE))
 
-mout  <- Match(Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix, caliper = c(FALSE, .09, .09, FALSE, FALSE))
+mout  <- Match(Tr=Tr, X=X.nonwar.gen, Weight.matrix = genout$Weight.matrix, exact=c(FALSE, TRUE, TRUE, FALSE, FALSE))
 summary(mout)
 
 mb  <- MatchBalance(war2 ~ lctdir + scm + term + nyt + bef75, data=dta.nonwar, match.out=mout, nboots=100)
@@ -190,7 +191,11 @@ summary(mout.nonwar.nb)
 
 st[4,1:3] <- c(mout.nonwar.nb$est[1], mout.nonwar.nb$se, mout.nonwar.nb$orig.treated.nobs - length(mout.nonwar.nb$index.dropped))
 
-psens(mout.nonwar.nb, Gamma=1.5, GammaInc=.1)
+sensout <- psens(mout.nonwar.nb, Gamma=1.1, GammaInc=.01)
+plot(sensout$bounds$Gamma, sensout$bounds$`Upper bound`, xlab = "Gamma",  ylab = "Upper bound p-value")
+grid(nx = NULL ,ny = F)
+abline(h = 0.05, col = "red")
+
 hlsens(mout.nonwar.nb, Gamma=1.5, GammaInc=.1, .1)
 
 mout.nonwar.b  <- Match(Y=Y, Tr=Tr, X=X.nonwar.gen, BiasAdjust = TRUE, Weight.matrix = genout$Weight.matrix)
